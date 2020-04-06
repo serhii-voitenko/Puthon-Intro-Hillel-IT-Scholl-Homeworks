@@ -40,13 +40,9 @@ class Animal:
 
 
 class Mammal(Animal):
-    def __init__(self, name, animal_type, species, mass, progeny):
+    def __init__(self, name, animal_type, species, mass, children):
         super().__init__(name, animal_type, species, mass)
-        self.progeny = progeny
-
-    @property
-    def mammal(self):
-        return self.name, self.animal_type, self.species, self.mass, self.progeny
+        self.children = children
 
 
 class Reptile(Animal):
@@ -54,21 +50,13 @@ class Reptile(Animal):
         super().__init__(name, animal_type, species, mass)
         self.poison = poison
 
-    @property
-    def reptile(self):
-        return self.name, self.animal_type, self.species, self.mass, self.poison
-
 
 class Bird(Animal):
-    def __init__(self, name, animal_type, species, mass, wingspan, sounds, speech=None):
+    def __init__(self, name, animal_type, species, mass, wingspan, voice, list_voice=None):
         super().__init__(name, animal_type, species, mass)
         self.wingspan = wingspan
-        self.sounds = sounds
-        self.speech = speech
-
-    @property
-    def bird(self):
-        return self.name, self.animal_type, self.species, self.mass, self.wingspan, self.sounds, self.speech
+        self.voice = voice
+        self.list_voice = list_voice
 
 
 class AnimalDataBase:
@@ -85,19 +73,28 @@ class AnimalDataBase:
     def _create_animal(self, record):
         animal_args = record.split(' ')
         if animal_args[1] == 'Mammal':
-            return Mammal(animal_args[0], animal_args[1], animal_args[2], animal_args[3], animal_args[4]).mammal
+            return Mammal(animal_args[0], animal_args[1], animal_args[2], animal_args[3], animal_args[4])
         elif animal_args[1] == 'Reptile':
-            return Reptile(animal_args[0], animal_args[1], animal_args[2], animal_args[3], animal_args[4]).reptile
+            return Reptile(animal_args[0], animal_args[1], animal_args[2], animal_args[3], animal_args[4])
         elif animal_args[1] == 'Bird':
             if len(animal_args) <= 6:
                 return Bird(animal_args[0], animal_args[1], animal_args[2], animal_args[3], animal_args[4],
-                            animal_args[5]).bird
+                            animal_args[5])
         return Bird(animal_args[0], animal_args[1], animal_args[2], animal_args[3], animal_args[4], animal_args[5],
-                    animal_args[6:]).bird
+                    animal_args[6:])
 
-    def user_ask(self, query_choice):
-        name = str(input('Введите имя животного: '))
-
+    def find_animal(self, name, first_char):
+        is_animal_with_such_name = False
+        for animal in self.__animal_db:
+            if name == animal.name:
+                animal_prop = char_dict[first_char]
+                if hasattr(animal, animal_prop):
+                    print(name, animal_prop, getattr(animal, animal_prop))
+                else:
+                    print('Animal - ', name, ' - hasn\'t such property')
+                    is_animal_with_such_name = True
+                    if not is_animal_with_such_name:
+                        print('There is no animal with name - ', name)
 
 
 records = [
@@ -109,21 +106,21 @@ records = [
     'Doug Mammal Dog 20 4'
 ]
 
-query_choice = """
-Query animal 
-[s] species
-[m] mass
-[l] 
-[v] 
-[w] 
-[t] 
-[n] 
-
-"""
+char_dict = {
+    'a': 'animal_type',
+    's': 'species',
+    'm': 'mass',
+    'c': 'children',
+    'w': 'wingspan',
+    'p': 'poison',
+    'v': 'voice',
+    'l': 'list_voice',
+}
 
 db = AnimalDataBase()
 db.save_animals_from_records(records)
-print(db._AnimalDataBase__animal_db)
-print(db.user_ask(query_choice))
+db.find_animal('Carl', 'm')
+
+
 
 
