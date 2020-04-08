@@ -85,6 +85,7 @@ class ATM:
     """
     класс Банкомата
     """
+
     def __init__(self, bank_name, name):
         self.bank = bank_name
         self.name = name
@@ -180,7 +181,8 @@ class Bank:
         create_passport_data = {"full_name": str(input('Enter your full name: ')),
                                 "number": str(input('Enter your passport number: '))}
         person_acc = PersonACC(create_inn, create_money_limit, create_passport_data)
-        return person_acc, print(f'Your login: {person_acc.login}, your password: {person_acc.password}')
+        return person_acc, \
+            print(f'Your login: {person_acc.login}, your password: {person_acc.password}')
 
     def login(self, person_acc):
         """
@@ -287,7 +289,7 @@ class UserVisit:
         self.bank_name = bank_name
         self.atm_name = atm_name
 
-    def start_login(self, person_acc=None):
+    def start(self, person_acc=None):
         """ вход в систему юзера """
         self.bank_name = Bank(self.bank_name)
         self.atm_name = ATM(self.bank_name, self.atm_name)
@@ -295,11 +297,10 @@ class UserVisit:
             self.bank_name.login(person_acc) is True
         except AttributeError:
             print(f'You should create an account before start.')
-            self.bank_name.create_person_acc()
-            return self.bank_or_atm(person_acc)
+            created_acc = self.bank_name.create_person_acc()
+            self.bank_or_atm(created_acc)
 
-
-    def bank_or_atm(self, person_acc):
+    def bank_or_atm(self, created_acc):
         """ выбор куда идти """
         try:
             self.atm_name in self.bank_name.atm_list
@@ -309,15 +310,12 @@ class UserVisit:
         while True:
             order = input('Would you like to visit [bank] or [atm]? ')
             if order == 'bank':
-                return self.bank_name.main(person_acc)
+                return self.bank_name.main(created_acc)
             elif order == 'atm':
                 return self.atm_name.main()
-
-    def main(self):
-        self.start_login()
 
 
 bank = Bank('Privat')
 bank.add_atm('1')
 user = UserVisit(bank, '1')
-user.main()
+user.start()
