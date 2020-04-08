@@ -29,15 +29,16 @@ class PersonACC:
     А так это аккаунт человека в банке
     """
 
-    def __init__(self, inn, limit, passport_data=None):
+    def __init__(self, inn, limit, passport_data):
         self.inn = inn
         self.set_limit = limit
         self.passport_data = passport_data
         self.__person_id = self.__generate_id()
         self.__login = f'{self.passport_data["full_name"]}'
-        self.__pwd = f'{self.__person_id}pwd'
+        self.__pwd = f'{self.__person_id}'
         self.__curr_money = 0
-    passport_data = {}
+        self.passport_data = {"full_name": " ",
+                              "number": " "}
 
     def __generate_id(self):
         """ генератор пароля пользователя """
@@ -84,9 +85,8 @@ class ATM:
     """
     класс Банкомата
     """
-
-    def __init__(self, bank, name):
-        self.bank = bank
+    def __init__(self, bank_name, name):
+        self.bank = bank_name
         self.name = name
         self.bank.add_atm(self)
 
@@ -151,6 +151,11 @@ class Bank:
         """ список банкоматов """
         return self.__atm_list
 
+    @property
+    def accounts(self):
+        """ список аккаунтов """
+        return self.__accounts
+
     def add_atm(self, new_atm):
         """
         Метод для добавления нового банкомата в список банкоматов банка
@@ -163,19 +168,19 @@ class Bank:
         """ удаление банкомата """
         self.__atm_list.remove(old_atm)
 
-    def create_person_acc(self, *args, **kwargs):
+    def create_person_acc(self):
         """
         Метод создает аккаунт в банке,добавляя его в хранилище аккаунтов банка
         :param args:
         :param kwargs:
         :return:
         """
-        person_acc = PersonACC(args[0], args[1], **kwargs)
-        person_acc.inn = str(input('Enter your INN: '))
-        person_acc.limit = int(input('Enter the money limit: '))
-        person_acc.passport_data.update({"full_name": str(input('Enter your full name: ')),
-                                         "number": str(input('Enter your passport number: '))})
-        self.__accounts[person_acc.login] = person_acc
+        create_inn = str(input('Enter your INN: '))
+        create_money_limit = int(input('Enter the money limit: '))
+        create_passport_data = {"full_name": str(input('Enter your full name: ')),
+                                "number": str(input('Enter your passport number: '))}
+        person_acc = PersonACC(create_inn, create_money_limit, create_passport_data)
+        return person_acc, print(f'Your login: {person_acc.login}, your password: {person_acc.password}')
 
     def login(self, person_acc):
         """
@@ -183,8 +188,9 @@ class Bank:
         :return: буль
         """
         bank_side_acc = input('Input your login:') == self.__accounts[person_acc.login]
-        bank_side_acc.password = input(str('Input your password: '))
-        if bank_side_acc.password == person_acc.password:
+        bank_side_acc.password = input(str('Input your password: ')) == self.__accounts[person_acc.password]
+        if bank_side_acc == self.accounts[person_acc.login] and \
+                bank_side_acc.password == self.accounts[person_acc.password]:
             return True
         return False
 
@@ -241,8 +247,6 @@ class Bank:
                 data.append(v.to_dict())
             json.dump(data, file)
 
-            file.write(str(self.__accounts))
-
     def main(self, person_acc):
         """
         :param person_acc: аккаунт человека
@@ -250,17 +254,17 @@ class Bank:
         """
         while True:
             operation = input('Input operation:'
-                              '[get] - to get money'
-                              '[add] - to add money'
-                              '[send] - to send money another person'
-                              '[balance] - to check the balance'
-                              '[delete] - to delete your account'
-                              '[exit] - to finish the operation')
+                              '[get] - to get money, '
+                              '[add] - to add money, '
+                              '[send] - to send money another person, '
+                              '[balance] - to check the balance, '
+                              '[delete] - to delete your account, '
+                              '[exit] - to finish the operation, ')
             if operation == 'get':
                 money = input('Input value to get ')
                 self.get_money(person_acc, money)
             elif operation == 'add':
-                money = input('Input value to set ')
+                money = input('Input value to add ')
                 self.add_money(person_acc, money)
             elif operation == 'send':
                 money = input('Input value to send another person ')
@@ -283,17 +287,19 @@ class UserVisit:
         self.bank_name = bank_name
         self.atm_name = atm_name
 
-    def start_login(self):
+    def start_login(self, person_acc=None):
         """ вход в систему юзера """
         self.bank_name = Bank(self.bank_name)
         self.atm_name = ATM(self.bank_name, self.atm_name)
         try:
-            self.bank_name.login = True
-        except False:
-            raise BaseException(' You should create an account before start. ')
-        return self.bank_name.create_person_acc()
+            self.bank_name.login(person_acc) is True
+        except AttributeError:
+            print(f'You should create an account before start.')
+            self.bank_name.create_person_acc()
+            return self.bank_or_atm(person_acc)
 
-    def bank_or_atm(self):
+
+    def bank_or_atm(self, person_acc):
         """ выбор куда идти """
         try:
             self.atm_name in self.bank_name.atm_list
@@ -303,13 +309,12 @@ class UserVisit:
         while True:
             order = input('Would you like to visit [bank] or [atm]? ')
             if order == 'bank':
-                return self.bank_name.main()
+                return self.bank_name.main(person_acc)
             elif order == 'atm':
                 return self.atm_name.main()
 
     def main(self):
         self.start_login()
-        self.bank_or_atm()
 
 
 bank = Bank('Privat')
