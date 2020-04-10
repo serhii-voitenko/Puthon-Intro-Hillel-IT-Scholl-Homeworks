@@ -130,7 +130,7 @@ class ATM:
                     break
             bank.accounts.update({str(person_acc.login): person_acc})
             return person_acc
-        raise AttributeError('Login failed.')
+        print('Login failed.')
 
 
 class Bank:
@@ -166,7 +166,7 @@ class Bank:
         """ удаление банкомата """
         self.__atm_list.remove(old_atm)
 
-    def create_person_acc(self):
+    def create_person_acc(self, person_acc):
         """
         Метод создает аккаунт в банке,добавляя его в хранилище аккаунтов банка
         :param args:
@@ -222,14 +222,12 @@ class Bank:
 
     def send_money(self, person_acc, another_person_acc, money):
         """ метод отправки денег другому аккаунту """
-        print(self.__accounts[another_person_acc])
         if another_person_acc in self.__accounts:
             self.get_money(person_acc, money)
-            person = self.accounts[another_person_acc]
-            self.add_money(person, money)
-            # self.__accounts[another_person_acc].get()
-            # self.__accounts[another_person_acc].update({'_PersonACC__curr_money': money})
-            print(f' Now {another_person_acc} has {self.accounts[another_person_acc]}')
+            self.add_money(self.__accounts[another_person_acc], money)
+            self.__accounts.update({str(person_acc.login): person_acc})
+            self.__accounts.update({str(another_person_acc): self.__accounts[another_person_acc]})
+            print(f'Now {another_person_acc} has {self.accounts[another_person_acc].cur_money}')
         else:
             print('Not valid account to send')
 
@@ -284,7 +282,7 @@ class Bank:
             elif operation == 'exit':
                 print(f'By-by {person_acc.login}')
                 break
-        self.__accounts.update({str(person_acc.login): person_acc.__dict__})
+        self.__accounts.update({str(person_acc.login): person_acc})
         return person_acc
 
 
@@ -303,21 +301,23 @@ class UserVisit:
             self.bank_name.login(person_acc) is True
         except AttributeError:
             print(f'You should create an account before start.')
-            created_acc = self.bank_name.create_person_acc()
+            created_acc = self.bank_name.create_person_acc(person_acc)
             self.bank_or_atm(created_acc)
 
     def continue_work(self, person_acc):
         """ повторный вход в систему, при вводе неверных данных происходит бэкап данных """
         if self.bank_name.login(person_acc) is True:
             while True:
-                order = input('Would you like to visit [bank] or [atm]? ')
+                order = input('Would you like to visit [bank] or [atm]? Input [exit] to exit ')
                 if order == 'bank':
                     self.bank_name.main(person_acc)
                 elif order == 'atm':
                     self.atm_name.main(person_acc)
+                elif order == 'exit':
+                    return self.continue_work(person_acc)
         self.bank_name.backup()
         print(f'You should create an account before start.')
-        created_acc = self.bank_name.create_person_acc()
+        created_acc = self.bank_name.create_person_acc(person_acc)
         self.bank_or_atm(created_acc)
 
     def bank_or_atm(self, created_acc):
