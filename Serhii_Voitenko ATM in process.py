@@ -29,7 +29,7 @@ class PersonACC:
     А так это аккаунт человека в банке
     """
 
-    def __init__(self, inn, limit, passport_data):
+    def __init__(self, inn, limit, passport_data=None):
         self.inn = inn
         self.set_limit = limit
         self.passport_data = passport_data
@@ -37,8 +37,6 @@ class PersonACC:
         self.__login = f'{self.passport_data["full_name"]}'
         self.__pwd = f'{self.__person_id}'
         self.__curr_money = 0
-        self.passport_data = {"full_name": " ",
-                              "number": " "}
 
     def __generate_id(self):
         """ генератор пароля пользователя """
@@ -66,11 +64,12 @@ class PersonACC:
         """ метод для пополнения средств - в банке"""
         if val <= self.set_limit:
             self.__curr_money += val
+            return self.__curr_money
         print('Set limit is low')
 
-    def check_money_limit(self, money):
+    def check_money_limit(self):
         """ проверка текущего лимита в банкомате """
-        return all((self.set_limit > money, self.__curr_money))
+        return f'Current limit: {self.set_limit}, current money: {self.__curr_money}'
 
     def to_dict(self):
         """ запись данных аккаунта в файл - в случае аварии """
@@ -116,24 +115,22 @@ class ATM:
         """
         if self.__connect_to_bank(person_acc):
             while True:
-                operation = input('Input operation:'
-                                  '[get] - to get money'
-                                  '[add] - to add money'
-                                  '[balance] - to check the balance'
-                                  '[exit] - to finish the operation')
+                operation = input('Input operation: '
+                                  '[get] - to get money, '
+                                  '[add] - to add money, '
+                                  '[balance] - to check the balance, '
+                                  '[exit] - to finish the operation, ')
                 if operation == 'get':
-                    money = input('Input value to get')
+                    money = input('Input value to get: ')
                     self.bank.get_money(person_acc, money)
-                elif operation == 'add':
-                    money = input('Input value to set')
-                    self.bank.add_money(person_acc, money)
                 elif operation == 'balance':
                     self.bank.get_acc_balance(person_acc)
                 elif operation == 'exit':
-                    print('By-by')
+                    print(f'By-by {person_acc.login}')
                     break
-        else:
-            print('Login failed ')
+            bank.accounts.update({str(person_acc.login): person_acc})
+            return person_acc
+        raise AttributeError('Login failed.')
 
 
 class Bank:
@@ -181,19 +178,20 @@ class Bank:
         create_passport_data = {"full_name": str(input('Enter your full name: ')),
                                 "number": str(input('Enter your passport number: '))}
         person_acc = PersonACC(create_inn, create_money_limit, create_passport_data)
-        return person_acc, \
-            print(f'Your login: {person_acc.login}, your password: {person_acc.password}')
+        self.__accounts.update({str(person_acc.login): person_acc})
+        print(f'Your login: {person_acc.login}, your password: {person_acc.password}')
+        return person_acc
 
     def login(self, person_acc):
         """
         Метод для логина, сравнивает пароли аккаунта и банка, если гуд - вернет тру
         :return: буль
         """
-        bank_side_acc = input('Input your login:') == self.__accounts[person_acc.login]
-        bank_side_acc.password = input(str('Input your password: ')) == self.__accounts[person_acc.password]
-        if bank_side_acc == self.accounts[person_acc.login] and \
-                bank_side_acc.password == self.accounts[person_acc.password]:
-            return True
+        bank_side_acc = input('Input your login: ')
+        if bank_side_acc == person_acc.login:
+            bank_side_acc_password = input('Input your password: ')
+            if bank_side_acc_password == person_acc.password:
+                return True
         return False
 
     def get_money(self, person_acc, money):
@@ -201,9 +199,11 @@ class Bank:
         Метод для снятия денег с аккаунта
         :return:
         """
-        if person_acc.check_money_limit(money):
-            person_acc.get_money(money)
-            print(person_acc.cur_money)
+        if person_acc.cur_money > int(money):
+            person_acc.get_money(int(money))
+            print(f'Now account balance is: {person_acc.cur_money}')
+        else:
+            print('Your account balance is low. Please add money before continue the operation.')
 
     def add_money(self, person_acc, money):
         """
@@ -211,21 +211,27 @@ class Bank:
         :return:
         """
         person_acc.add_money(int(money))
-        print(person_acc.cur_money)
+        print(f'Now account balance is: {person_acc.cur_money}')
 
     def get_acc_balance(self, person_acc):
         """
         Метод для показывания текущего баланса
         :return:
         """
-        print(person_acc.check_money_limit)
+        print(person_acc.check_money_limit())
 
-    def send_money(self, person_acc, another_person_acc, val):
+    def send_money(self, person_acc, another_person_acc, money):
         """ метод отправки денег другому аккаунту """
+        print(self.__accounts[another_person_acc])
         if another_person_acc in self.__accounts:
-            self.get_money(person_acc, val)
-            self.add_money(another_person_acc, val)
-            return
+            self.get_money(person_acc, money)
+            person = self.accounts[another_person_acc]
+            self.add_money(person, money)
+            # self.__accounts[another_person_acc].get()
+            # self.__accounts[another_person_acc].update({'_PersonACC__curr_money': money})
+            print(f' Now {another_person_acc} has {self.accounts[another_person_acc]}')
+        else:
+            print('Not valid account to send')
 
     def delete_atm(self, atm_to_delete):
         """ удаление банкомата из списка """
@@ -235,18 +241,17 @@ class Bank:
 
     def delete_acc(self, person_acc):
         """ метод удаления аккаунта """
-        if person_acc in self.__accounts:
-            del self.__accounts[person_acc]
+        if person_acc.login in self.__accounts:
+            print(f'Account {person_acc.login} was deleted')
+            del self.__accounts[person_acc.login]
             return
 
     def backup(self):
         """ аварийное сохранение данных """
         with open('ATM_backup.txt', 'w') as file:
-            file.write(len(self.__atm_list))
+            file.write(str(len(self.__atm_list)))
         with open('Accounts_backup.txt', 'w') as file:
-            data = []
-            for v in self.__accounts.values():
-                data.append(v.to_dict())
+            data = [person_acc.to_dict()]
             json.dump(data, file)
 
     def main(self, person_acc):
@@ -270,16 +275,17 @@ class Bank:
                 self.add_money(person_acc, money)
             elif operation == 'send':
                 money = input('Input value to send another person ')
-                another_person_acc = input('Input account to send a value ')
+                another_person_acc = str(input('Input account to send a value '))
                 self.send_money(person_acc, another_person_acc, money)
             elif operation == 'balance':
                 self.get_acc_balance(person_acc)
             elif operation == 'delete':
                 self.delete_acc(person_acc)
-            elif operation == 'exit ':
-                print('By-by')
+            elif operation == 'exit':
+                print(f'By-by {person_acc.login}')
                 break
-        print('Login failed ')
+        self.__accounts.update({str(person_acc.login): person_acc.__dict__})
+        return person_acc
 
 
 class UserVisit:
@@ -300,19 +306,34 @@ class UserVisit:
             created_acc = self.bank_name.create_person_acc()
             self.bank_or_atm(created_acc)
 
+    def continue_work(self, person_acc):
+        """ повторный вход в систему, при вводе неверных данных происходит бэкап данных """
+        if self.bank_name.login(person_acc) is True:
+            while True:
+                order = input('Would you like to visit [bank] or [atm]? ')
+                if order == 'bank':
+                    self.bank_name.main(person_acc)
+                elif order == 'atm':
+                    self.atm_name.main(person_acc)
+        self.bank_name.backup()
+        print(f'You should create an account before start.')
+        created_acc = self.bank_name.create_person_acc()
+        self.bank_or_atm(created_acc)
+
     def bank_or_atm(self, created_acc):
-        """ выбор куда идти """
+        """ выбор куда идти, если банкомата нет в списке - бэкап данных """
+        global person_acc
         try:
             self.atm_name in self.bank_name.atm_list
         except Exception:
             self.bank_name.backup()
             raise BaseException('Something went wrong.. ')
-        while True:
-            order = input('Would you like to visit [bank] or [atm]? ')
-            if order == 'bank':
-                return self.bank_name.main(created_acc)
-            elif order == 'atm':
-                return self.atm_name.main()
+        order = input('Would you like to visit [bank] or [atm]? ')
+        if order == 'bank':
+            person_acc = self.bank_name.main(created_acc)
+        elif order == 'atm':
+            person_acc = self.atm_name.main(created_acc)
+        self.continue_work(person_acc)
 
 
 bank = Bank('Privat')
